@@ -234,11 +234,19 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-db.init().then(() => {
+// Init DB
+db.init();
+
+// Export for Vercel
+module.exports = app;
+
+// Only listen if running locally (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`\n╔══════════════════════════════════════════════╗`);
     console.log(`║   🚀 PRIVATE MODE - LEBIHFIT ENGINE v2.0   ║`);
     console.log(`║   Running on port ${PORT} with DB Cloud support   ║`);
     console.log(`╚══════════════════════════════════════════════╝\n`);
   });
-});
+}
