@@ -108,10 +108,9 @@ PENTING: Response HARUS berupa JSON valid tanpa teks tambahan. Format:
           ]
         }
       ],
-      model: "llama-3.2-90b-vision-preview",
+      model: "llava-v1.5-7b-4096-preview",
       temperature: 0.1,
-      max_tokens: 1024,
-      response_format: { type: "json_object" }
+      max_tokens: 1024
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -172,10 +171,9 @@ PENTING: Response HARUS berupa JSON valid tanpa teks tambahan. Format:
           ]
         }
       ],
-      model: "llama-3.2-90b-vision-preview",
+      model: "llava-v1.5-7b-4096-preview",
       temperature: 0.1,
-      max_tokens: 2048,
-      response_format: { type: "json_object" }
+      max_tokens: 2048
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -248,8 +246,7 @@ async function analyzeBodyProfile(profileData) {
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.1,
-      max_tokens: 2048,
-      response_format: { type: "json_object" }
+      max_tokens: 2048
     });
     return JSON.parse(completion.choices[0]?.message?.content);
   } catch (error) {
