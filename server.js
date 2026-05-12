@@ -233,6 +233,53 @@ app.get('/api/profil', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/bodyscan', authenticateToken, upload.single('body_image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Foto tubuh diperlukan' });
+    const imagePath = req.file.path;
+    const analysis = await ai.analyzeBodyImage(imagePath);
+
+    const scan = await db.addBodyScan({
+      user_id: req.user.uid,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-GB'),
+      image_path: `/uploads/${req.file.filename}`,
+      body_assessment: analysis.body_assessment,
+      recommendations: analysis.recommendations,
+      summary: analysis.summary,
+      ai_response: analysis
+    });
+
+    res.json({ success: true, scan, analysis });
+  } catch (error) {
+    console.error('Body scan error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/bodyscan/:id', authenticateToken, async (req, res) => {
+  try {
+    await db.deleteBodyScan(req.user.uid, req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/history', authenticateToken, async (req, res) => {
+  try {
+    const { start, end, type } = req.query;
+    const meals = (type === 'all' || type === 'meals') ? await db.getMealsByDateRange(req.user.uid, start, end) : [];
+    const workouts = (type === 'all' || type === 'workouts') ? await db.getWorkoutsByDateRange(req.user.uid, start, end) : [];
+    const scans = (type === 'all' || type === 'scans') ? await db.getBodyScansByDateRange(req.user.uid, start, end) : [];
+    const profiles = (type === 'all' || type === 'profil') ? await db.getProfilLogsByDateRange(req.user.uid, start, end) : [];
+
+    res.json({ meals, workouts, scans, profiles });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========================
 // START SERVER
 // ========================

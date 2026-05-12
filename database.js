@@ -53,6 +53,19 @@ async function init() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS body_scans (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      date TEXT NOT NULL DEFAULT CURRENT_DATE,
+      time TEXT NOT NULL DEFAULT CURRENT_TIME,
+      image_path TEXT,
+      body_assessment TEXT,
+      recommendations TEXT,
+      summary TEXT,
+      ai_response TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS profil_logs (
       id SERIAL PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -71,10 +84,6 @@ async function init() {
       target_protein REAL DEFAULT 0,
       target_fat REAL DEFAULT 0,
       target_carbs REAL DEFAULT 0,
-      target_cholesterol REAL DEFAULT 0,
-      target_sodium REAL DEFAULT 0,
-      target_fiber REAL DEFAULT 0,
-      target_sugar REAL DEFAULT 0,
       ai_response TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -103,7 +112,6 @@ async function init() {
 
 async function query(sql, params = []) {
   if (isPostgres) {
-    // Convert ? to $1, $2, etc for Postgres
     let i = 0;
     const pgSql = sql.replace(/\?/g, () => `$${++i}`);
     const res = await db.query(pgSql, params);
@@ -130,35 +138,65 @@ async function get(sql, params = []) {
   return rows[0] || null;
 }
 
-// ... rest of the functions remain the same but use the new query/run/get wrappers
+// MEALS
 async function addMeal(data) {
   const sql = `INSERT INTO meals (user_id, date, time, description, image_path, food_items, calories, protein, fat, cholesterol, sodium, carbs, fiber, sugar, ai_response, input_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   const res = await run(sql, [data.user_id, data.date, data.time, data.description, data.image_path, JSON.stringify(data.food_items), data.calories, data.protein, data.fat, data.cholesterol, data.sodium, data.carbs, data.fiber, data.sugar, JSON.stringify(data.ai_response), data.input_type]);
   return { id: res.lastInsertId, ...data };
 }
-
 async function getMealsByDate(user_id, date) {
   return query(`SELECT * FROM meals WHERE user_id = ? AND date = ? ORDER BY time DESC`, [user_id, date]);
 }
-
+async function getMealsByDateRange(user_id, start, end) {
+  return query(`SELECT * FROM meals WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date DESC, time DESC`, [user_id, start, end]);
+}
 async function deleteMeal(user_id, id) {
   return run(`DELETE FROM meals WHERE user_id = ? AND id = ?`, [user_id, id]);
 }
 
+// WORKOUTS
 async function addWorkout(data) {
   const sql = `INSERT INTO workouts (user_id, date, time, type, exercises, total_duration, calories_burned, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
   const res = await run(sql, [data.user_id, data.date, data.time, data.type, JSON.stringify(data.exercises), data.total_duration, data.calories_burned, data.notes]);
   return { id: res.lastInsertId, ...data };
 }
-
 async function getWorkoutsByDate(user_id, date) {
   return query(`SELECT * FROM workouts WHERE user_id = ? AND date = ? ORDER BY time DESC`, [user_id, date]);
 }
-
+async function getWorkoutsByDateRange(user_id, start, end) {
+  return query(`SELECT * FROM workouts WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date DESC, time DESC`, [user_id, start, end]);
+}
 async function deleteWorkout(user_id, id) {
   return run(`DELETE FROM workouts WHERE user_id = ? AND id = ?`, [user_id, id]);
 }
 
+// BODY SCANS
+async function addBodyScan(data) {
+  const sql = `INSERT INTO body_scans (user_id, date, time, image_path, body_assessment, recommendations, summary, ai_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  const res = await run(sql, [data.user_id, data.date, data.time, data.image_path, JSON.stringify(data.body_assessment), JSON.stringify(data.recommendations), data.summary, JSON.stringify(data.ai_response)]);
+  return { id: res.lastInsertId, ...data };
+}
+async function getBodyScansByDateRange(user_id, start, end) {
+  return query(`SELECT * FROM body_scans WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date DESC, time DESC`, [user_id, start, end]);
+}
+async function deleteBodyScan(user_id, id) {
+  return run(`DELETE FROM body_scans WHERE user_id = ? AND id = ?`, [user_id, id]);
+}
+
+// PROFIL
+async function addProfilLog(data) {
+  const sql = `INSERT INTO profil_logs (user_id, date, time, bb, tb, usia, gender, activity, goal, bmi, bmr, tdee, target_calories, target_protein, target_fat, target_carbs, ai_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const res = await run(sql, [data.user_id, data.date, data.time, data.bb, data.tb, data.usia, data.gender, data.activity, data.goal, data.bmi, data.bmr, data.tdee, data.target_calories, data.target_protein, data.target_fat, data.target_carbs, JSON.stringify(data.ai_response)]);
+  return { id: res.lastInsertId, ...data };
+}
+async function getLatestProfilLog(user_id) {
+  return get(`SELECT * FROM profil_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1`, [user_id]);
+}
+async function getProfilLogsByDateRange(user_id, start, end) {
+  return query(`SELECT * FROM profil_logs WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date DESC, time DESC`, [user_id, start, end]);
+}
+
+// DASHBOARD
 async function getDashboardStats(user_id, startDate, endDate) {
   const mealStats = await get(`SELECT COUNT(*) as total_meals, COALESCE(SUM(calories),0) as total_calories, COALESCE(SUM(protein),0) as total_protein FROM meals WHERE user_id = ? AND date BETWEEN ? AND ?`, [user_id, startDate, endDate]);
   const workoutStats = await get(`SELECT COUNT(*) as total_workouts, COALESCE(SUM(calories_burned),0) as total_calories_burned FROM workouts WHERE user_id = ? AND date BETWEEN ? AND ?`, [user_id, startDate, endDate]);
@@ -166,27 +204,20 @@ async function getDashboardStats(user_id, startDate, endDate) {
   return { meals: mealStats, workouts: workoutStats, dailyCalories };
 }
 
-async function addProfilLog(data) {
-  const sql = `INSERT INTO profil_logs (user_id, date, time, bb, tb, usia, gender, activity, goal, bmi, bmr, tdee, target_calories, target_protein, target_fat, target_carbs, ai_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const res = await run(sql, [data.user_id, data.date, data.time, data.bb, data.tb, data.usia, data.gender, data.activity, data.goal, data.bmi, data.bmr, data.tdee, data.target_calories, data.target_protein, data.target_fat, data.target_carbs, JSON.stringify(data.ai_response)]);
-  return { id: res.lastInsertId, ...data };
-}
-
-async function getLatestProfilLog(user_id) {
-  return get(`SELECT * FROM profil_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1`, [user_id]);
-}
-
+// RECAPS
 async function upsertDailyRecap(user_id, date, summary) {
   const existing = await get(`SELECT * FROM daily_recaps WHERE user_id = ? AND date = ?`, [user_id, date]);
   if (existing) return run(`UPDATE daily_recaps SET summary = ? WHERE user_id = ? AND date = ?`, [summary, user_id, date]);
   return run(`INSERT INTO daily_recaps (user_id, date, summary) VALUES (?, ?, ?)`, [user_id, date, summary]);
 }
-
 async function getDailyRecap(user_id, date) {
   return get(`SELECT * FROM daily_recaps WHERE user_id = ? AND date = ?`, [user_id, date]);
 }
 
 module.exports = {
-  init, addMeal, getMealsByDate, deleteMeal, addWorkout, getWorkoutsByDate, deleteWorkout,
-  getDashboardStats, addProfilLog, getLatestProfilLog, upsertDailyRecap, getDailyRecap
+  init, addMeal, getMealsByDate, getMealsByDateRange, deleteMeal, 
+  addWorkout, getWorkoutsByDate, getWorkoutsByDateRange, deleteWorkout,
+  addBodyScan, getBodyScansByDateRange, deleteBodyScan,
+  getDashboardStats, addProfilLog, getLatestProfilLog, getProfilLogsByDateRange,
+  upsertDailyRecap, getDailyRecap
 };
