@@ -11,6 +11,27 @@ if (process.env.NODE_ENV !== 'production') {
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Helper to get mime type
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+// Helper to clean Gemini JSON output
+function cleanGeminiJSON(text) {
+  try {
+    // Cari JSON di dalam string (menghapus markdown ```json ... ```)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    return JSON.parse(jsonMatch[0]);
+  } catch (e) {
+    console.error("Clean JSON Error:", e.message, "Raw Text:", text);
+    throw e;
+  }
+}
+
 // ========================
 // ANALYZE FOOD TEXT (Groq)
 // ========================
@@ -20,10 +41,10 @@ async function analyzeFoodText(description) {
       messages: [
         {
           role: "system",
-          content: `Kamu adalah ahli nutrisi profesional. Menganalisis makanan dan mengembalikan data nutrisi dalam format JSON STRICT.
-Response HARUS JSON valid:
+          content: `Kamu adalah ahli nutrisi cyberpunk. Analisis makanan dan berikan JSON.
+Format JSON:
 {
-  "food_items": [ { "name": "nama", "amount": "jumlah", "grams": 100 } ],
+  "food_items": [ { "name": "nama", "amount": "porsi", "grams": 100 } ],
   "nutrition": { "calories": 0, "protein": 0, "fat": 0, "cholesterol": 0, "sodium": 0, "carbs": 0, "fiber": 0, "sugar": 0 },
   "summary": "ringkasan bahasa Indonesia"
 }`
@@ -37,7 +58,7 @@ Response HARUS JSON valid:
     return JSON.parse(completion.choices[0]?.message?.content);
   } catch (error) {
     console.error('Groq Text Error:', error.message);
-    return estimateFoodFromText(description);
+    return { summary: "Error analisis teks: " + error.message, nutrition: { calories: 0 } };
   }
 }
 
@@ -48,13 +69,18 @@ async function analyzeFoodImage(imagePath) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const imageBuffer = fs.readFileSync(imagePath);
+    const mimeType = getMimeType(imagePath);
     
-    const prompt = `Analisis foto makanan ini. Identifikasi item, porsi, dan hitung total nutrisinya.
-    Kembalikan HANYA dalam format JSON valid seperti ini:
+    const prompt = `TUGAS: Analisis foto makanan ini secara akurat.
+    1. Identifikasi semua item makanan dan estimasi berat/porsi.
+    2. Hitung total Kalori, Protein, Lemak, Kolesterol, Sodium, Karbo, Serat, Gula.
+    3. Berikan ringkasan singkat dalam Bahasa Indonesia.
+    
+    KEMBALIKAN HANYA DATA JSON TANPA TEKS LAIN:
     {
-      "food_items": [ { "name": "nama makanan", "amount": "porsi", "grams": 100 } ],
+      "food_items": [ { "name": "nama", "amount": "porsi", "grams": 0 } ],
       "nutrition": { "calories": 0, "protein": 0, "fat": 0, "cholesterol": 0, "sodium": 0, "carbs": 0, "fiber": 0, "sugar": 0 },
-      "summary": "ringkasan singkat bahasa Indonesia"
+      "summary": "..."
     }`;
 
     const result = await model.generateContent([
@@ -62,18 +88,20 @@ async function analyzeFoodImage(imagePath) {
       {
         inlineData: {
           data: imageBuffer.toString("base64"),
-          mimeType: "image/jpeg"
+          mimeType: mimeType
         }
       }
     ]);
 
-    const response = await result.response;
-    const text = response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    return JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    const text = result.response.text();
+    return cleanGeminiJSON(text);
   } catch (error) {
-    console.error('Gemini Image Error:', error.message);
-    return { summary: "Gagal analisis gambar via Gemini: " + error.message };
+    console.error('Gemini Food Error:', error.message);
+    return { 
+      food_items: [], 
+      nutrition: { calories: 0, protein: 0, fat: 0, cholesterol: 0, sodium: 0, carbs: 0, fiber: 0, sugar: 0 }, 
+      summary: "Gagal analisis gambar. Error: " + error.message 
+    };
   }
 }
 
@@ -84,13 +112,19 @@ async function analyzeBodyImage(imagePath) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const imageBuffer = fs.readFileSync(imagePath);
+    const mimeType = getMimeType(imagePath);
     
-    const prompt = `Analisis foto tubuh ini sebagai fitness consultant. Berikan assessment dan rekomendasi.
-    Kembalikan HANYA dalam format JSON valid:
+    const prompt = `TUGAS: Analisis foto tubuh ini sebagai pakar fitness profesional.
+    1. Estimasi Body Fat Percentage.
+    2. Assessment massa otot.
+    3. Analisis postur.
+    4. Berikan rekomendasi Diet, Goal, dan Latihan (Weekly Plan).
+    
+    KEMBALIKAN HANYA DATA JSON TANPA TEKS LAIN:
     {
       "body_assessment": { "body_fat_estimate": "...", "muscle_assessment": "...", "posture": "...", "overall_condition": "..." },
-      "recommendations": { "goal": "...", "diet_strategy": "...", "workout_focus": [], "exercises": [], "weekly_plan": "...", "tips": [] },
-      "summary": "ringkasan bahasa Indonesia"
+      "recommendations": { "goal": "...", "diet_strategy": "...", "workout_focus": [], "exercises": [{ "name": "...", "sets": "...", "reps": "...", "notes": "..." }], "weekly_plan": "...", "tips": [] },
+      "summary": "..."
     }`;
 
     const result = await model.generateContent([
@@ -98,29 +132,31 @@ async function analyzeBodyImage(imagePath) {
       {
         inlineData: {
           data: imageBuffer.toString("base64"),
-          mimeType: "image/jpeg"
+          mimeType: mimeType
         }
       }
     ]);
 
-    const response = await result.response;
-    const text = response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    return JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    const text = result.response.text();
+    return cleanGeminiJSON(text);
   } catch (error) {
     console.error('Gemini Body Error:', error.message);
-    return { summary: "Gagal analisis tubuh via Gemini: " + error.message };
+    return { 
+      body_assessment: { body_fat_estimate: "N/A", muscle_assessment: "N/A", posture: "N/A", overall_condition: "N/A" },
+      recommendations: { goal: "N/A", diet_strategy: "N/A", workout_focus: [], exercises: [], weekly_plan: "N/A", tips: [] },
+      summary: "Gagal analisis tubuh. Error: " + error.message 
+    };
   }
 }
 
 // ========================
-// WORKOUT & PROFILE (Groq)
+// ESTIMATIONS & RECAP
 // ========================
 async function estimateCaloriesBurned(workoutData) {
   try {
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: "Estimasi kalori workout dalam JSON: { \"calories_burned\": 0, \"intensity\": \"low/medium/high\", \"notes\": \"...\" }" },
+        { role: "system", content: "Hitung estimasi kalori terbakar dalam JSON: { \"calories_burned\": 0, \"intensity\": \"low/medium/high\", \"notes\": \"...\" }" },
         { role: "user", content: JSON.stringify(workoutData) }
       ],
       model: "llama-3.3-70b-versatile",
@@ -135,7 +171,7 @@ async function analyzeBodyProfile(profileData) {
   try {
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: "Berikan analisis nutrisi harian detail dalam JSON valid." },
+        { role: "system", content: "Hitung kebutuhan nutrisi harian dalam JSON valid." },
         { role: "user", content: JSON.stringify(profileData) }
       ],
       model: "llama-3.3-70b-versatile",
@@ -150,18 +186,14 @@ async function generateDailyRecap(data) {
   try {
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: "Berikan ringkasan harian fitness gaya cyberpunk dalam bahasa Indonesia." },
+        { role: "system", content: "Ringkasan harian fitness gaya cyberpunk (Bahasa Indonesia)." },
         { role: "user", content: JSON.stringify(data) }
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.7
     });
     return completion.choices[0]?.message?.content;
-  } catch (error) { return "AI Offline, stay strong!"; }
-}
-
-function estimateFoodFromText(description) {
-  return { nutrition: { calories: 250 }, summary: "Estimasi lokal (AI Offline)" };
+  } catch (error) { return "AI Offline."; }
 }
 
 module.exports = {

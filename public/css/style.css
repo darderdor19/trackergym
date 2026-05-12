@@ -542,39 +542,73 @@ body {
 .meal-nutri-val { color: var(--cyan); font-weight: 700; font-size: 0.8rem; display: block; }
 .meal-nutri-lbl { color: var(--text-muted); font-size: 0.6rem; letter-spacing: 1px; }
 
-/* ==================== RESPONSIVE ==================== */
+/* ==================== RESPONSIVE FIXES ==================== */
 @media (max-width: 900px) {
   .sidebar-toggle { display: flex; }
-  .cyber-sidebar { transform: translateX(-100%); }
+  .cyber-sidebar { transform: translateX(-100%); width: 260px; box-shadow: 10px 0 30px rgba(0,0,0,0.8); }
   .cyber-sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0; padding: 70px 14px 20px; }
+  .main-content { margin-left: 0; padding: 80px 16px 30px; width: 100%; }
+  
   .charts-grid { grid-template-columns: 1fr; }
-  .exercise-row { flex-direction: column; align-items: stretch; }
-  .flex-1, .flex-2 { min-width: 100%; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  
   .history-controls { flex-direction: column; align-items: stretch; }
-  .custom-date-range { flex-wrap: wrap; gap: 4px; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .meal-nutri-grid { grid-template-columns: repeat(4, 1fr); font-size: 0.6rem; }
-  .history-entry { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .history-left { width: 100%; min-width: 0; }
-  .history-stats { width: 100%; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 8px; }
-  .delete-btn { align-self: flex-end; }
-  .profil-grid { grid-template-columns: repeat(2, 1fr); }
-  .profil-detail-sections { grid-template-columns: 1fr; }
-  .history-type-tabs { overflow-x: auto; padding-bottom: 8px; }
-  .htab-btn { white-space: nowrap; }
+  .custom-date-range { flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .date-input { flex: 1; min-width: 120px; }
 }
 
 @media (max-width: 600px) {
   .stats-grid { grid-template-columns: 1fr; }
-  .cyber-title { font-size: 1.3rem; }
-  .nutrition-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .input-mode-toggle, .workout-type-selector { flex-direction: column; }
-  .meal-nutri-grid { grid-template-columns: repeat(2, 1fr); }
+  .cyber-title { font-size: 1.3rem; text-align: center; width: 100%; }
+  .section-header { flex-direction: column; text-align: center; }
+  
+  .nutrition-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .nutri-item { padding: 10px 5px; }
+  .nutri-value { font-size: 1.1rem; }
+  
+  .input-mode-toggle, .workout-type-selector { flex-direction: column; width: 100%; }
+  .mode-btn, .type-btn { width: 100%; }
+  
+  /* History Entry Mobile */
+  .history-entry { 
+    flex-direction: column; 
+    align-items: stretch; 
+    padding: 14px;
+    position: relative;
+  }
+  .history-left { width: 100%; margin-bottom: 10px; }
+  .history-stats { 
+    width: 100%; 
+    padding: 8px 0; 
+    border-top: 1px solid var(--border);
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .delete-btn { width: 100%; text-align: center; margin-top: 5px; }
+  
+  /* Meal Nutri Mini Grid Mobile */
+  .meal-nutri-grid { 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 6px; 
+    padding: 10px;
+    background: rgba(0,0,255,0.05);
+  }
+  .meal-nutri-item { border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 4px; }
+  
   .profil-grid { grid-template-columns: 1fr; }
   .profil-dashboard-stats { grid-template-columns: repeat(2, 1fr); }
-  .period-selector { overflow-x: auto; padding-bottom: 4px; width: 100%; }
-  .period-btn { white-space: nowrap; }
+  
+  .period-selector { width: 100%; overflow-x: auto; padding-bottom: 8px; display: flex; }
+  .period-btn { flex-shrink: 0; min-width: 60px; text-align: center; }
+  
+  /* Charts and Recap */
+  .chart-card { height: 300px; padding: 12px; }
+  .recap-content { font-size: 0.85rem; padding: 12px; }
+}
+
+@media (max-width: 400px) {
+  .nutrition-grid { grid-template-columns: 1fr; }
+  .profil-dashboard-stats { grid-template-columns: 1fr; }
 }
 
 /* ==================== AUTH OVERLAY ==================== */
