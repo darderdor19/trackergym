@@ -1,7 +1,3 @@
-const { Pool } = require('pg');
-const Database = require('better-sqlite3');
-const path = require('path');
-
 // ========================
 // DATABASE SELECTION
 // ========================
@@ -10,12 +6,15 @@ const isPostgres = !!process.env.DATABASE_URL;
 
 if (isPostgres) {
   console.log('✅ Connecting to PostgreSQL (Cloud Mode)');
+  const { Pool } = require('pg');
   db = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
   });
 } else {
   console.log('✅ Connecting to SQLite (Local Mode)');
+  const Database = require('better-sqlite3');
+  const path = require('path');
   const dbPath = path.join(__dirname, 'tracker.db');
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
