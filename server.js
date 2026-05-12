@@ -28,9 +28,13 @@ async function authenticateToken(req, res, next) {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Ensure uploads directory exists
+// Define uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+// Ensure uploads directory exists (Only locally, Vercel uses cloud storage or temporary)
+if (process.env.NODE_ENV !== 'production') {
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Multer config for image uploads
 const storage = multer.diskStorage({
