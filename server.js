@@ -1,4 +1,6 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+}
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -28,10 +30,10 @@ async function authenticateToken(req, res, next) {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Define uploads directory
-const uploadsDir = path.join(__dirname, 'uploads');
+// Define uploads directory (Use /tmp on Vercel)
+const uploadsDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(__dirname, 'uploads');
 
-// Ensure uploads directory exists (Only locally, Vercel uses cloud storage or temporary)
+// Ensure uploads directory exists (Only locally)
 if (process.env.NODE_ENV !== 'production') {
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 }
