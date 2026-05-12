@@ -108,7 +108,7 @@ PENTING: Response HARUS berupa JSON valid tanpa teks tambahan. Format:
           ]
         }
       ],
-      model: "llama-3.2-11b-vision-preview",
+      model: "llama-3.2-90b-vision-preview",
       temperature: 0.1,
       max_tokens: 1024,
       response_format: { type: "json_object" }
@@ -172,7 +172,7 @@ PENTING: Response HARUS berupa JSON valid tanpa teks tambahan. Format:
           ]
         }
       ],
-      model: "llama-3.2-11b-vision-preview",
+      model: "llama-3.2-90b-vision-preview",
       temperature: 0.1,
       max_tokens: 2048,
       response_format: { type: "json_object" }
